@@ -142,7 +142,7 @@ int WINAPI NewCreateFontW(int nHeight,
 void Hook()
 {
     DWORD dwProtect;
-    auto fix1ptr = ((UINT_PTR)hmoduleOfProcess) + 0x2798C1;
+    auto fix1ptr = ((UINT_PTR)hmoduleOfProcess) + 0x2798C1; // 0x295B51; // Okayu Nyumu!
     if (VirtualProtect((PVOID&)fix1ptr, 1, PAGE_EXECUTE_READWRITE, &dwProtect))
     {
         memset((PVOID&)fix1ptr, 0xD1, 1);
@@ -154,7 +154,7 @@ void Hook()
         std::cout << "Cyrillic Fix1 Failed" << std::endl;
     }
 
-    auto fix2ptr = ((UINT_PTR)hmoduleOfProcess) + 0x1E094E;
+    auto fix2ptr = ((UINT_PTR)hmoduleOfProcess) + 0x1E094E; // 0x1E769E; // Okayu Nyumu!
     if (VirtualProtect((PVOID&)fix2ptr, 1, PAGE_EXECUTE_READWRITE, &dwProtect))
     {
         memset((PVOID&)fix2ptr, 0x01, 1);
@@ -166,7 +166,7 @@ void Hook()
         std::cout << "Cyrillic Fix2 Failed" << std::endl;
     }
 
-    auto fix3ptr = ((UINT_PTR)hmoduleOfProcess) + 0x1A3BDD;
+    auto fix3ptr = ((UINT_PTR)hmoduleOfProcess) + 0x1A3BDD; // 0x1B67FD; // Okayu Nyumu!
     if (VirtualProtect((PVOID&)fix3ptr, 6, PAGE_EXECUTE_READWRITE, &dwProtect))
     {
         memset((PVOID&)fix3ptr, 0x90, 6);
