@@ -1,4 +1,4 @@
-﻿#include "pch.h"
+#include "pch.h"
 
 HMODULE hmoduleOfProcess;
 bool existLangRu;
@@ -43,6 +43,56 @@ string utf16_to_utf8(const wstring& utf16)
 std::string base_name(std::string const& path)
 {
     return path.substr(path.find_last_of("/\\") + 1);
+}
+
+bool MemoryCompare(const BYTE* data, const BYTE* datamask, const char* mask)
+{
+    for (; *mask; ++data, ++datamask, ++mask)
+    {
+        if (!strcmp(mask, "xxxx"))
+        {
+            if (*(UINT32*)data != *(UINT32*)datamask)
+            {
+                return FALSE;
+            }
+
+            data += 3, datamask += 3, mask += 3;
+            continue;
+        }
+
+        if (!strcmp(mask, "xx"))
+        {
+            if (*(UINT16*)data != *(UINT16*)datamask)
+            {
+                return FALSE;
+            }
+
+            data++, datamask++, mask++;
+            continue;
+        }
+
+        if (*mask == 'x' && *data != *datamask)
+        {
+            return false;
+        }
+    }
+
+    return (*mask) == 0;
+}
+
+UINT_PTR FindMemoryPattern(const char* mask, BYTE* datamask, UINT_PTR start, UINT_PTR length)
+{
+    UINT_PTR end = start + length;
+
+    for (UINT_PTR i = start; i < end; i++)
+    {
+        if (MemoryCompare((BYTE*)i, datamask, mask))
+        {
+            return i;
+        }
+    }
+
+    return 0;
 }
 
 PVOID g_pOldCreateFileW = CreateFileW;
@@ -142,40 +192,92 @@ int WINAPI NewCreateFontW(int nHeight,
 void Hook()
 {
     DWORD dwProtect;
-    auto fix1ptr = ((UINT_PTR)hmoduleOfProcess) + 0x2798C1; // 0x295B51; // Okayu Nyumu!
-    if (VirtualProtect((PVOID&)fix1ptr, 1, PAGE_EXECUTE_READWRITE, &dwProtect))
+
+    BYTE patternfix1[] = { 0x7F, 0x76, 0x54, 0x3C, 0xEF, 0x0F, 0x85, 0x0F, 0x01, 0x00, 0x00, 0x83, 0xFF, 0x02, 0x7E, 0x47, 0x8A, 0x51, 0x01, 0x8A, 0xC2, 0x04, 0x5C, 0x3C, 0x1A };
+    UINT_PTR ptrfix1 = FindMemoryPattern("xxxxxxxxxxxxxxxxxxxxxxxxx", patternfix1, ((UINT_PTR)hmoduleOfProcess), 0x300000);
+    if (ptrfix1 != 0)
     {
-        memset((PVOID&)fix1ptr, 0xD1, 1);
-        VirtualProtect((PVOID&)fix1ptr, 1, dwProtect, &dwProtect);
-        std::cout << "Cyrillic Fix1 Done" << std::endl;
+        //auto fix1ptr = ((UINT_PTR)hmoduleOfProcess) + 0x295B51;
+        auto fix1ptr = ptrfix1;
+        if (VirtualProtect((PVOID&)fix1ptr, 1, PAGE_EXECUTE_READWRITE, &dwProtect))
+        {
+            memset((PVOID&)fix1ptr, 0xD1, 1);
+            VirtualProtect((PVOID&)fix1ptr, 1, dwProtect, &dwProtect);
+            std::cout << "Cyrillic Fix1 Done" << std::endl;
+        }
+        else
+        {
+            std::cout << "Cyrillic Fix1 Failed" << std::endl;
+        }
     }
     else
     {
-        std::cout << "Cyrillic Fix1 Failed" << std::endl;
+        std::cout << "Cyrillic Fix1 Search Failed" << std::endl;
     }
 
-    auto fix2ptr = ((UINT_PTR)hmoduleOfProcess) + 0x1E094E; // 0x1E769E; // Okayu Nyumu!
-    if (VirtualProtect((PVOID&)fix2ptr, 1, PAGE_EXECUTE_READWRITE, &dwProtect))
+    BYTE patternfix2[] = { 0x02, 0x80, 0xF9, 0xC1, 0x0F, 0x86, 0xD3, 0x00, 0x00, 0x00, 0x80, 0xF9, 0xDF, 0x0F, 0x87, 0xB0, 0x00, 0x00, 0x00, 0xB9, 0x02, 0x00, 0x00, 0x00, 0xE9 };
+    UINT_PTR ptrfix2 = FindMemoryPattern("xxxxxxxxxxxxxxxxxxxxxxxxx", patternfix2, ((UINT_PTR)hmoduleOfProcess), 0x300000);
+    if (ptrfix2 != 0)
     {
-        memset((PVOID&)fix2ptr, 0x01, 1);
-        VirtualProtect((PVOID&)fix2ptr, 1, dwProtect, &dwProtect);
-        std::cout << "Cyrillic Fix2 Done" << std::endl;
+        //auto fix2ptr = ((UINT_PTR)hmoduleOfProcess) + 0x1E769E;
+        auto fix2ptr = ptrfix2;
+        if (VirtualProtect((PVOID&)fix2ptr, 1, PAGE_EXECUTE_READWRITE, &dwProtect))
+        {
+            memset((PVOID&)fix2ptr, 0x01, 1);
+            VirtualProtect((PVOID&)fix2ptr, 1, dwProtect, &dwProtect);
+            std::cout << "Cyrillic Fix2 Done" << std::endl;
+        }
+        else
+        {
+            std::cout << "Cyrillic Fix2 Failed" << std::endl;
+        }
     }
     else
     {
-        std::cout << "Cyrillic Fix2 Failed" << std::endl;
+        std::cout << "Cyrillic Fix2 Search Failed" << std::endl;
     }
 
-    auto fix3ptr = ((UINT_PTR)hmoduleOfProcess) + 0x1A3BDD; // 0x1B67FD; // Okayu Nyumu!
-    if (VirtualProtect((PVOID&)fix3ptr, 6, PAGE_EXECUTE_READWRITE, &dwProtect))
+    BYTE patternfix3[] = { 0x0F, 0x85, 0xCA, 0x00, 0x00, 0x00, 0xF6, 0x45, 0x10, 0x04, 0x0F, 0x84, 0xC0, 0x00, 0x00, 0x00, 0x83, 0xC1, 0x1C, 0x8B, 0xD1, 0x8D, 0x72, 0x02, 0x66 };
+    UINT_PTR ptrfix3 = FindMemoryPattern("xxxxxxxxxxxxxxxxxxxxxxxxx", patternfix3, ((UINT_PTR)hmoduleOfProcess), 0x300000);
+    if (ptrfix3 != 0)
     {
-        memset((PVOID&)fix3ptr, 0x90, 6);
-        VirtualProtect((PVOID&)fix3ptr, 1, dwProtect, &dwProtect);
-        std::cout << "Font Fix Done" << std::endl;
+        //auto fix3ptr = ((UINT_PTR)hmoduleOfProcess) + 0x1B67FD;
+        auto fix3ptr = ptrfix3;
+        if (VirtualProtect((PVOID&)fix3ptr, 6, PAGE_EXECUTE_READWRITE, &dwProtect))
+        {
+            memset((PVOID&)fix3ptr, 0x90, 6);
+            VirtualProtect((PVOID&)fix3ptr, 1, dwProtect, &dwProtect);
+            std::cout << "Font Fix Done" << std::endl;
+        }
+        else
+        {
+            std::cout << "Font Fix Failed" << std::endl;
+        }
     }
     else
     {
-        std::cout << "Font Fix Failed" << std::endl;
+        std::cout << "Font Fix Search Failed" << std::endl;
+    }
+
+    BYTE patternfix4[] = { 0x02, 0x00, 0x00, 0x00, 0xEB, 0x5C, 0x8D, 0x41, 0x02, 0x3B, 0xC6, 0x7C, 0x05, 0x83, 0xC8, 0xFF, 0xEB, 0x50, 0x8A, 0x62, 0x01, 0x8A, 0xC4, 0x04, 0x5C };
+    UINT_PTR ptrfix4 = FindMemoryPattern("xxxxxxxxxxxxxxxxxxxxxxxxx", patternfix4, ((UINT_PTR)hmoduleOfProcess), 0x300000);
+    if (ptrfix4 != 0)
+    {
+        auto fix4ptr = ptrfix4;
+        if (VirtualProtect((PVOID&)fix4ptr, 1, PAGE_EXECUTE_READWRITE, &dwProtect))
+        {
+            memset((PVOID&)fix4ptr, 0x01, 1);
+            VirtualProtect((PVOID&)fix4ptr, 1, dwProtect, &dwProtect);
+            std::cout << "Cyrillic Fix4 Done" << std::endl;
+        }
+        else
+        {
+            std::cout << "Cyrillic Fix4 Failed" << std::endl;
+        }
+    }
+    else
+    {
+        std::cout << "Cyrillic Fix4 Search Failed" << std::endl;
     }
 
     DetourTransactionBegin();
@@ -193,6 +295,11 @@ BOOL APIENTRY DllMain( HMODULE hModule,
     switch (ul_reason_for_call)
     {
     case DLL_PROCESS_ATTACH:
+
+        //AllocConsole();
+        //freopen("conin$", "r", stdin);
+        //freopen("conout$", "w", stdout);
+        //freopen("conout$", "w", stderr);
 
         Proxy::Init(hModule);
 
